@@ -7,8 +7,8 @@
 ---
 
 Axel Perea Pinedo
-* **Nombre completo de segundo integrante**
-* **Nombre completo del tercer integrante**
+Diego Guillermo Guardado Viramontes
+Valeria Carrillo Hernández
 
 ## Grupo
 

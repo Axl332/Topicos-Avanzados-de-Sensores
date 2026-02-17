@@ -1,0 +1,97 @@
+/*
+ * PROYECTO: Sistema de Geocercas 
+
+ * PARTICIPANTES: 
+* - Axel Perea Pinedo
+* - Diego Guillermo Guardado Viramontes
+* - Valeria Carrillo Hernández
+ */
+
+#include <Arduino.h>
+#include <TinyGPSPlus.h>
+#include <HardwareSerial.h>
+
+// --- Configuración de la Geocerca ---
+struct PuntoGPS {
+  double lat;
+  double lon;
+};
+
+const PuntoGPS CENTRO_OBJETIVO = {22.784083, -102.616722};
+const float RADIO_LIMITE_METROS = 50.0;
+
+// --- Recursos de Hardware ---
+#define PIN_RX 16
+#define PIN_TX 17
+HardwareSerial SerialGPS(1);
+TinyGPSPlus decodificador;
+
+// --- Prototipos de Funciones ---
+double obtenerDistanciaMetros(PuntoGPS p1, PuntoGPS p2);
+bool estaDentroDeRango(double distanciaActual);
+void imprimirReporte(double d);
+
+void setup() {
+  Serial.begin(115200);
+  SerialGPS.begin(9600, SERIAL_8N1, PIN_RX, PIN_TX);
+  
+  Serial.println("SISTEMA DE GEOLOCALIZACIÓN INICIALIZADO");
+  Serial.println("Esperando señal de satélites...");
+}
+
+void loop() {
+  // Procesamiento de tramas NMEA del módulo GPS
+  while (SerialGPS.available() > 0) {
+    decodificador.encode(SerialGPS.read());
+  }
+
+  // Ejecutar lógica solo cuando hay una actualización de posición
+  if (decodificador.location.isUpdated()) {
+    PuntoGPS posicionActual = {decodificador.location.lat(), decodificador.location.lng()};
+    
+    // Cálculo de métricas
+    double distanciaAlCentro = obtenerDistanciaMetros(posicionActual, CENTRO_OBJETIVO);
+    
+    // Salida de datos
+    imprimirReporte(distanciaAlCentro);
+    
+    delay(1000); // Pausa de 1 segundo (Frecuencia 1Hz)
+  }
+}
+
+// Implementación de la fórmula de Haversine
+double obtenerDistanciaMetros(PuntoGPS p1, PuntoGPS p2) {
+  const double RADIO_TIERRA = 6371000.0;
+  
+  double dLat = (p2.lat - p1.lat) * DEG_TO_RAD;
+  double dLon = (p2.lon - p1.lon) * DEG_TO_RAD;
+  
+  double a = sin(dLat/2) * sin(dLat/2) +
+             cos(p1.lat * DEG_TO_RAD) * cos(p2.lat * DEG_TO_RAD) *
+             sin(dLon/2) * sin(dLon/2);
+             
+  double c = 2 * atan2(sqrt(a), sqrt(1-a));
+  return RADIO_TIERRA * c;
+}
+
+// Lógica booleana para determinar estado
+bool estaDentroDeRango(double distanciaActual) {
+  return (distanciaActual <= RADIO_LIMITE_METROS);
+}
+
+// Función estética de impresión
+void imprimirReporte(double d) {
+  Serial.println("\n===============================");
+  Serial.printf(" POSICIÓN: %.6f , %.6f\n", decodificador.location.lat(), decodificador.location.lng());
+  Serial.printf(" ALTITUD:  %.2f m  | VEL: %.2f km/h\n", decodificador.altitude.meters(), decodificador.speed.kmph());
+  Serial.printf(" SATS:     %d\n", decodificador.satellites.value());
+  Serial.println("-------------------------------");
+  Serial.printf(" DISTANCIA AL OBJETIVO: %.2f m\n", d);
+  
+  if (estaDentroDeRango(d)) {
+    Serial.println(" ESTADO: [ DENTRO DE GEOCERCA ]");
+  } else {
+    Serial.println(" ESTADO: [ FUERA DE ÁREA ]");
+  }
+  Serial.println("===============================");
+}

@@ -1,0 +1,109 @@
+/*
+ * PROYECTO: Sistema de Adquisición de Datos Geoespaciales
+ * PARTICIPANTES: 
+* - Axel Perea Pinedo
+* - Diego Guillermo Guardado Viramontes
+* - Valeria Carrillo Hernández
+ */
+
+#include <Arduino.h>
+#include <TinyGPSPlus.h>
+#include <HardwareSerial.h>
+
+// --- Definiciones de Hardware ---
+#define GPS_RX_PIN 16
+#define GPS_TX_PIN 17
+#define VELOCIDAD_GPS 9600
+
+// --- Parámetros de Muestreo ---
+const uint16_t MAX_MUESTRAS = 900; 
+const uint32_t INTERVALO_MS = 1000;
+
+// Estructura para organizar la información recolectada
+struct LecturaGPS {
+  double latitud;
+  double longitud;
+  double altitud;
+};
+
+// Variables Globales
+TinyGPSPlus receptorGps;
+HardwareSerial puertoGps(1);
+LecturaGPS baseDatos[MAX_MUESTRAS]; // Arreglo de estructuras
+uint16_t contadorMuestras = 0;
+uint32_t cronometro = 0;
+
+// --- Prototipos de Funciones ---
+void mostrarResultadosMatlab();
+void procesarLectura();
+
+void setup() {
+  Serial.begin(115200);
+  puertoGps.begin(VELOCIDAD_GPS, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+  
+  Serial.println("--- SISTEMA DE POSICIONAMIENTO ACTIVO ---");
+}
+
+void loop() {
+  // 1. Alimentar el decodificador GPS con los datos del serial
+  while (puertoGps.available() > 0) {
+    receptorGps.encode(puertoGps.read());
+  }
+
+  // 2. Verificar si es momento de tomar una muestra
+  if (millis() - cronometro >= INTERVALO_MS) {
+    cronometro = millis(); // Reiniciar cronómetro
+
+    // Solo guardar si el GPS tiene señal válida y no hemos llenado el arreglo
+    if (receptorGps.location.isValid() && contadorMuestras < MAX_MUESTRAS) {
+      procesarLectura();
+    }
+  }
+
+  // 3. Finalización y reporte
+  if (contadorMuestras >= MAX_MUESTRAS) {
+    mostrarResultadosMatlab();
+    while (true); // Bloqueo de seguridad al terminar
+  }
+}
+
+// Función para capturar y almacenar datos
+void procesarLectura() {
+  baseDatos[contadorMuestras].latitud  = receptorGps.location.lat();
+  baseDatos[contadorMuestras].longitud = receptorGps.location.lng();
+  baseDatos[contadorMuestras].altitud  = receptorGps.altitude.meters();
+
+  Serial.printf("Registro [%d/%d] almacenado con éxito.\n", contadorMuestras + 1, MAX_MUESTRAS);
+  contadorMuestras++;
+}
+
+// Función para imprimir en formato compatible con MATLAB
+void mostrarResultadosMatlab() {
+  Serial.println("\n\n% --- EXPORTACIÓN DE DATOS A MATLAB ---");
+  
+  // Imprimir Latitudes
+  Serial.print("latitudes_data = [");
+  for (int i = 0; i < MAX_MUESTRAS; i++) {
+    Serial.print(baseDatos[i].latitud, 6);
+    Serial.print(i == MAX_MUESTRAS - 1 ? "" : "; ");
+  }
+  Serial.println("];");
+
+  // Imprimir Longitudes
+  Serial.print("longitudes_data = [");
+  for (int i = 0; i < MAX_MUESTRAS; i++) {
+    Serial.print(baseDatos[i].longitud, 6);
+    Serial.print(i == MAX_MUESTRAS - 1 ? "" : "; ");
+  }
+  Serial.println("];");
+
+  // Imprimir Altitudes
+  Serial.print("altitudes_data = [");
+  for (int i = 0; i < MAX_MUESTRAS; i++) {
+    Serial.print(baseDatos[i].altitud, 2);
+    Serial.print(i == MAX_MUESTRAS - 1 ? "" : "; ");
+  }
+  Serial.println("];");
+
+  Serial.println("% --- FIN DE DATOS ---");
+}

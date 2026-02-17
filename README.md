@@ -6,9 +6,9 @@
 
 ---
 
-Axel Perea Pinedo
-Diego Guillermo Guardado Viramontes
-Valeria Carrillo Hernández
+**Axel Perea Pinedo**
+**Diego Guillermo Guardado Viramontes**
+**Valeria Carrillo Hernández**
 
 ## Grupo
 

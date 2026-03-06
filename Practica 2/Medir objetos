@@ -1,0 +1,28 @@
+#include "Adafruit_VL53L0X.h"
+
+Adafruit_VL53L0X sensor = Adafruit_VL53L0X();
+
+void setup() {
+  Serial.begin(9600);
+  if (!sensor.begin()) {
+    Serial.println("Error: sensor no encontrado. Revisa conexion I2C.");
+    while (1);
+  }
+  Serial.println("Sensor VL53L0X listo.");
+  Serial.println("Midiendo cada 500ms...\n");
+}
+
+void loop() {
+  VL53L0X_RangingMeasurementData_t medicion;
+  sensor.rangingTest(&medicion, false);
+
+  if (medicion.RangeStatus != 4) {
+    Serial.print("Distancia: ");
+    Serial.print(medicion.RangeMilliMeter);
+    Serial.println(" mm");
+  } else {
+    Serial.println("Fuera de rango o sin objeto.");
+  }
+
+  delay(500);
+}

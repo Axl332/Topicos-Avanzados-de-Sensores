@@ -1,0 +1,59 @@
+/*
+ * PROYECTO: Reconstruccion 2D
+ * PARTICIPANTES: 
+
+* - Diego Guillermo Guardado Viramontes
+* - Axel Perea Pinedo
+* - Valeria Carrillo Hernández
+ */
+
+// ---  Se uso la libreria VL53L0X Pololu para mas facilidad ---
+#include <Wire.h>
+#include <VL53L0X.h>
+
+VL53L0X sensor;
+
+void setup() {
+    // --- Configuración de comunicaciones ---
+    Serial.begin(115200);
+    delay(1000);
+    Serial.println("Inicializando VL53L0X...");
+    Wire.begin();  // Inicia el bus I2C 
+
+    // --- Inicialización y seguridad del sensor ---
+    sensor.setTimeout(500); //  tiempo máximo 
+    if (!sensor.init()) {
+        Serial.println("No se detecto el VL53L0X");
+        while (1); // Detiene el programa si el sensor no responde
+    }
+    Serial.println("Sensor detectado");
+
+    // --- Configuración de rendimiento del sensor ---
+    sensor.setMeasurementTimingBudget(20000); 
+    sensor.startContinuous(); 
+}
+
+void loop() {
+    // --- Obtención de datos  ---
+    uint16_t distancia = sensor.readRangeContinuousMillimeters();
+
+    // --- Gestión de errores y procesamiento de la señal ---
+    if (sensor.timeoutOccurred()) {
+        Serial.println("Timeout!");
+    } 
+    else {
+        // Aplica un offset de -60mm para calibrar la distancia real 
+        int distancia_corregida = distancia - 60; 
+
+        // --- Filtrado de datos y salida por consola (0 a 150 mm) ---
+
+        if (distancia_corregida <= 150 && distancia_corregida > 0) {
+            Serial.print("Distancia: ");
+            Serial.print(distancia_corregida);
+            Serial.println(" mm");
+        }
+    }
+
+    // --- Control de tiempo de ejecución ---
+    delay(250); 
+}

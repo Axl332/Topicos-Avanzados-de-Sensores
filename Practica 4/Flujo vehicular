@@ -1,0 +1,171 @@
+
+//   SISTEMA DE FLUJO VEHICULAR CON SENSOR DE PRESIÓN
+//   Detección y clasificación de vehículos
+const int NUM_VEHICULOS = 10;
+
+// ── CONFIGURACIÓN DEL SENSOR ────────────────────────────────
+const float PESO_MIN      = 150.0;   // kg
+const float PESO_MAX      = 40000.0; // kg
+const float VEL_MIN       = 5.0;     // km/h (eficiencia mínima)
+const float VEL_MAX       = 180.0;   // km/h
+const float LONGITUD_SENSOR = 2.0;   // metros
+const float TIEMPO_MIN_MS = 50.0;    // ms mínimos de contacto
+
+// ── TIPOS DE VEHÍCULOS ──────────────────────────────────────
+const int NUM_TIPOS = 5;
+
+const char* tipos[] = {
+  "Motocicleta",
+  "Automovil",
+  "Camioneta mediana",
+  "Autobus/Camion ligero",
+  "Camion pesado (trailer)"
+};
+
+const float peso_min_tipo[] = {150,   900,  2500,  7500, 15000};
+const float peso_max_tipo[] = {400,  2500,  7500, 15000, 40000};
+const float vel_min_tipo[]  = { 20,    20,    15,    10,     5};
+const float vel_max_tipo[]  = {120,   160,   120,   100,    90};
+
+// ── CONTADORES PARA RESUMEN ─────────────────────────────────
+int conteo_tipos[NUM_TIPOS];
+int total_eficientes = 0;
+int total_marginales = 0;
+
+// ── FUNCIONES AUXILIARES ────────────────────────────────────
+
+float calcularTiempoContacto(float velocidad_kmh) {
+  if (velocidad_kmh == 0) return 9999.0;
+  float vel_ms = velocidad_kmh / 3.6;
+  return (LONGITUD_SENSOR / vel_ms) * 1000.0;
+}
+
+bool esEficiente(float velocidad_kmh, float tiempo_ms) {
+  return (velocidad_kmh >= VEL_MIN &&
+          velocidad_kmh <= VEL_MAX &&
+          tiempo_ms >= TIEMPO_MIN_MS);
+}
+
+int clasificarVehiculo(float peso_kg) {
+  for (int i = 0; i < NUM_TIPOS; i++) {
+    if (peso_kg >= peso_min_tipo[i] && peso_kg <= peso_max_tipo[i])
+      return i;
+  }
+  return -1; // desconocido
+}
+
+void imprimirBarra(int cantidad) {
+  for (int i = 0; i < cantidad; i++) Serial.print("#");
+}
+
+// ── SETUP ───────────────────────────────────────────────────
+
+void setup() {
+  Serial.begin(9600);
+  randomSeed(analogRead(0));
+
+  // Inicializar contadores
+  for (int i = 0; i < NUM_TIPOS; i++) conteo_tipos[i] = 0;
+
+  // ── ENCABEZADO ─────────────────────────────────────────
+  Serial.println("==========================================================");
+  Serial.println("  SISTEMA DE FLUJO VEHICULAR - SENSOR DE PRESION");
+  Serial.println("==========================================================");
+  Serial.print  ("  Rango de peso    : "); Serial.print(PESO_MIN, 0);
+  Serial.print  (" kg - ");                Serial.print(PESO_MAX, 0); Serial.println(" kg");
+  Serial.print  ("  Velocidad minima : "); Serial.print(VEL_MIN, 0);  Serial.println(" km/h");
+  Serial.print  ("  Velocidad maxima : "); Serial.print(VEL_MAX, 0);  Serial.println(" km/h");
+  Serial.print  ("  Longitud sensor  : "); Serial.print(LONGITUD_SENSOR, 1); Serial.println(" m");
+  Serial.println("==========================================================");
+  Serial.println();
+  Serial.println("  Tipos de vehiculos detectables:");
+  for (int i = 0; i < NUM_TIPOS; i++) {
+    Serial.print("    ["); Serial.print(i + 1); Serial.print("] ");
+    Serial.print(tipos[i]);
+    Serial.print("  [");
+    Serial.print(peso_min_tipo[i], 0); Serial.print(" - ");
+    Serial.print(peso_max_tipo[i], 0); Serial.println(" kg]");
+  }
+  Serial.println();
+  Serial.println("  [INICIO DE DETECCION]");
+  Serial.println("----------------------------------------------------------");
+
+  // ── SIMULACIÓN DE VEHÍCULOS ────────────────────────────
+  for (int v = 1; v <= NUM_VEHICULOS; v++) {
+
+    // Elegir tipo random
+    int tipo_idx = random(0, NUM_TIPOS);
+
+    // Generar peso y velocidad dentro del rango del tipo
+    float peso = random((int)peso_min_tipo[tipo_idx],
+                        (int)peso_max_tipo[tipo_idx] + 1);
+    float vel  = random((int)vel_min_tipo[tipo_idx],
+                        (int)vel_max_tipo[tipo_idx] + 1);
+
+    float t_contacto = calcularTiempoContacto(vel);
+    bool  eficiente  = esEficiente(vel, t_contacto);
+    int   detectado  = clasificarVehiculo(peso);
+
+    // Acumular contadores
+    if (detectado >= 0) conteo_tipos[detectado]++;
+    if (eficiente) total_eficientes++;
+    else           total_marginales++;
+
+    // Imprimir detección
+    Serial.print("  Vehiculo #");
+    if (v < 10) Serial.print("0");
+    Serial.print(v);
+    Serial.print(" | ");
+    Serial.print(eficiente ? "[EFICIENTE]" : "[MARGINAL ]");
+    Serial.println();
+
+    Serial.print("    Tipo detectado  : ");
+    Serial.println(detectado >= 0 ? tipos[detectado] : "Desconocido");
+
+    Serial.print("    Peso            : ");
+    Serial.print(peso, 0); Serial.println(" kg");
+
+    Serial.print("    Velocidad       : ");
+    Serial.print(vel, 0); Serial.println(" km/h");
+
+    Serial.print("    Tiempo contacto : ");
+    Serial.print(t_contacto, 2); Serial.println(" ms");
+
+    Serial.println();
+  }
+
+  // ── RESUMEN ────────────────────────────────────────────
+  Serial.println("==========================================================");
+  Serial.println("  RESUMEN DE SESION");
+  Serial.println("==========================================================");
+  Serial.print  ("  Total vehiculos   : "); Serial.println(NUM_VEHICULOS);
+  Serial.print  ("  Eficientes        : "); Serial.print(total_eficientes);
+  Serial.print  (" ("); Serial.print(total_eficientes * 100 / NUM_VEHICULOS);
+  Serial.println("%)");
+  Serial.print  ("  Marginales        : "); Serial.print(total_marginales);
+  Serial.print  (" ("); Serial.print(total_marginales * 100 / NUM_VEHICULOS);
+  Serial.println("%)");
+
+  Serial.println();
+  Serial.println("  Distribucion por tipo:");
+  for (int i = 0; i < NUM_TIPOS; i++) {
+    Serial.print("    "); Serial.print(tipos[i]); Serial.print(": ");
+    imprimirBarra(conteo_tipos[i]);
+    Serial.print(" ("); Serial.print(conteo_tipos[i]); Serial.println(")");
+  }
+
+  Serial.println();
+  Serial.println("  PROBLEMAS IDENTIFICADOS:");
+  Serial.println("    1. Vel < 5 km/h  -> contacto excesivo, satura sensor.");
+  Serial.println("    2. Vel > 120 km/h -> contacto < 60ms, baja precision.");
+  Serial.println("    3. Peso < 150 kg  -> bicicletas/peatones no detectados.");
+  Serial.println("    4. Multiples ejes -> riesgo de doble conteo.");
+  Serial.println("    5. Desgaste tubo  -> recalibrar periodicamente.");
+  Serial.println("==========================================================");
+  Serial.println("  FIN DEL REPORTE");
+  Serial.println("==========================================================");
+}
+
+void loop() {
+  // Solo se ejecuta una vez en setup()
+}

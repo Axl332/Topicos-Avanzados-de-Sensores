@@ -1,0 +1,96 @@
+#include <Wire.h>
+#include <Adafruit_BMP085.h>
+
+Adafruit_BMP085 bmp;
+
+float presion_cerrado = 0;
+float presion_abierto = 0;
+
+bool estado_cerrado = false;
+bool estado_abierto = false;
+
+void setup() {
+  Serial.begin(9600);
+
+  if (!bmp.begin()) {
+    Serial.println("Error: No se encontró el BMP180");
+    while (1);
+  }
+
+  Serial.println("=== MEDICION DE ENTORNO ===");
+  Serial.println("Escribe:");
+  Serial.println("C -> medir en cerrado");
+  Serial.println("A -> medir ventilado");
+}
+
+void loop() {
+
+  if (Serial.available()) {
+    char opcion = Serial.read();
+
+    if (opcion == 'C' || opcion == 'c') {
+      medirCerrado();
+    }
+
+    if (opcion == 'A' || opcion == 'a') {
+      medirAbierto();
+    }
+
+    if (estado_cerrado && estado_abierto) {
+      comparar();
+      estado_cerrado = false;
+      estado_abierto = false;
+    }
+  }
+}
+
+void medirCerrado() {
+  Serial.println("\nMidiendo entorno CERRADO...");
+  delay(2000);
+
+  presion_cerrado = bmp.readPressure();
+  float temp = bmp.readTemperature();
+
+  Serial.print("Presion cerrado (Pa): ");
+  Serial.println(presion_cerrado);
+
+  Serial.print("Temperatura (C): ");
+  Serial.println(temp);
+
+  estado_cerrado = true;
+}
+
+void medirAbierto() {
+  Serial.println("\nMidiendo entorno VENTILADO...");
+  delay(2000);
+
+  presion_abierto = bmp.readPressure();
+  float temp = bmp.readTemperature();
+
+  Serial.print("Presion ventilado (Pa): ");
+  Serial.println(presion_abierto);
+
+  Serial.print("Temperatura (C): ");
+  Serial.println(temp);
+
+  estado_abierto = true;
+}
+
+void comparar() {
+  Serial.println("\n=== COMPARACION ===");
+
+  float diferencia = presion_cerrado - presion_abierto;
+
+  Serial.print("Diferencia de presion (Pa): ");
+  Serial.println(diferencia);
+
+  if (diferencia > 0) {
+    Serial.println("Mayor presion en entorno cerrado");
+  } else if (diferencia < 0) {
+    Serial.println("Mayor presion en entorno ventilado");
+  } else {
+    Serial.println("Presiones iguales");
+  }
+
+  Serial.println("======================\n");
+}

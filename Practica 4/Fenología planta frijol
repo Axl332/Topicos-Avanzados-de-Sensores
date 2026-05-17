@@ -1,0 +1,103 @@
+const float TB = 10.0;
+const int NUM_ETAPAS = 6;
+const int NUM_DIAS = 14;
+
+const char* nombres_etapas[] = {
+  "Emergencia",
+  "Formacion de guias",
+  "Floracion",
+  "Formacion de vaina",
+  "Llenado de Vainas",
+  "Maduracion"
+};
+
+const float uc_etapas[] = {12.89, 64.41, 91.33, 99.31, 112.77, 153.24};
+
+void setup() {
+  Serial.begin(9600);
+  randomSeed(analogRead(0)); // semilla random desde pin analógico flotante
+
+  float uc_acumulada = 0.0;
+  int etapa_idx = -1;
+
+  // ── ENCABEZADO ──────────────────────────────────────────
+  Serial.println("=======================================================");
+  Serial.println("  SISTEMA DE FENOLOGIA DEL FRIJOL");
+  Serial.println("  Variedad: Rojo de Seda | TB = 10 C");
+  Serial.println("=======================================================");
+  Serial.print("  Dias simulados: ");
+  Serial.println(NUM_DIAS);
+  Serial.println();
+  Serial.println("-------------------------------------------------------");
+  Serial.println("DIA   Tmax   Tmin  UC/dia  UC Acum.  ETAPA");
+  Serial.println("-------------------------------------------------------");
+
+  // ── BUCLE DE DÍAS ───────────────────────────────────────
+  for (int dia = 1; dia <= NUM_DIAS; dia++) {
+
+    // Temperaturas random realistas para frijol
+    float tmax = random(240, 351) / 10.0;  // 24.0 – 35.0 °C
+    float tmin = random(100, 181) / 10.0;  // 10.0 – 18.0 °C
+
+    float uc_dia = (tmax + tmin) / 2.0 - TB;
+    if (uc_dia < 0) uc_dia = 0;
+    uc_acumulada += uc_dia;
+
+    // Detectar etapa actual
+    etapa_idx = -1;
+    for (int i = 0; i < NUM_ETAPAS; i++) {
+      if (uc_acumulada >= uc_etapas[i]) etapa_idx = i;
+    }
+
+    // Imprimir fila del día
+    Serial.print("  ");
+    if (dia < 10) Serial.print(" ");
+    Serial.print(dia);
+    Serial.print("   ");
+    Serial.print(tmax, 1);
+    Serial.print("   ");
+    Serial.print(tmin, 1);
+    Serial.print("   ");
+    Serial.print(uc_dia, 2);
+    Serial.print("    ");
+    Serial.print(uc_acumulada, 2);
+    Serial.print("  -> ");
+    if (etapa_idx == -1)
+      Serial.println("Pre-emergencia");
+    else
+      Serial.println(nombres_etapas[etapa_idx]);
+  }
+
+  // ── RESUMEN FINAL ───────────────────────────────────────
+  Serial.println();
+  Serial.println("=======================================================");
+  Serial.println("  RESUMEN FINAL");
+  Serial.println("=======================================================");
+  Serial.print("  Dias simulados   : "); Serial.println(NUM_DIAS);
+  Serial.print("  UC totales acum. : "); Serial.println(uc_acumulada, 2);
+  Serial.print("  Etapa actual     : ");
+  if (etapa_idx == -1) Serial.println("Pre-emergencia");
+  else Serial.println(nombres_etapas[etapa_idx]);
+
+  Serial.println();
+  Serial.println("  Progreso por etapa:");
+  for (int i = 0; i < NUM_ETAPAS; i++) {
+    Serial.print("    ");
+    Serial.print(nombres_etapas[i]);
+    Serial.print(" (");
+    Serial.print(uc_etapas[i], 2);
+    Serial.print(" UC)  ");
+    if (uc_acumulada >= uc_etapas[i]) {
+      Serial.println("COMPLETADA");
+    } else {
+      Serial.print("Faltan ");
+      Serial.print(uc_etapas[i] - uc_acumulada, 2);
+      Serial.println(" UC");
+    }
+  }
+  Serial.println("=======================================================");
+}
+
+void loop() {
+  // Sin repetición; todo corre una vez en setup()
+}

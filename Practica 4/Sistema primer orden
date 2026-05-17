@@ -1,0 +1,39 @@
+#include <Wire.h>
+#include <Adafruit_BMP085.h>
+
+Adafruit_BMP085 bmp;
+
+const int pinLM35 = A0;
+
+void setup() {
+  Serial.begin(9600);
+  
+  if (!bmp.begin()) {
+    Serial.println("No se encontró el BMP180, verifica conexiones.");
+    while (1);
+  }
+
+  Serial.println("Tiempo(s)\tLM35(°C)\tBMP180(°C)");
+}
+
+int tiempo = 0;
+
+void loop() {
+  // Lectura LM35
+  int lectura = analogRead(pinLM35);
+  float voltaje = lectura * (5.0 / 1023.0);
+  float tempLM35 = voltaje * 100.0;
+
+  // Lectura BMP180
+  float tempBMP = bmp.readTemperature();
+
+  // Imprimir datos separados por tabulación (fácil de copiar a Excel/Matlab)
+  Serial.print(tiempo);
+  Serial.print("\t");
+  Serial.print(tempLM35, 1);
+  Serial.print("\t");
+  Serial.println(tempBMP, 1);
+
+  tiempo += 5;
+  delay(5000); // Muestra cada 5 segundos
+}
